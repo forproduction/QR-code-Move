@@ -1,0 +1,717 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bagging Move</title>
+<script src="https://unpkg.com/html5-qrcode"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #080c10;
+    --card: #0f1520;
+    --card2: #131c2a;
+    --muted: #6b7a8d;
+    --muted2: #8a97a6;
+    --accent: #00e5ff;
+    --accent2: #00ff9c;
+    --panel: #0c1118;
+    --border: rgba(0,229,255,0.08);
+    --border2: rgba(255,255,255,0.05);
+    --danger: #ff4560;
+    --warn: #fbbf24;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body, html {
+    background: var(--bg);
+    color: #e0e8f0;
+    min-height: 100%;
+    font-family: var(--sans);
+  }
+
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: #1a2535; border-radius: 3px; }
+
+  /* ===== TOP NAV ===== */
+  #topnav {
+    background: rgba(8,12,16,0.97);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .nav-brand {
+    font-family: var(--sans);
+    font-size: 15px;
+    font-weight: 800;
+    color: var(--accent);
+    letter-spacing: 3px;
+    padding: 16px 24px 16px 0;
+    border-right: 1px solid var(--border);
+    margin-right: 16px;
+  }
+
+  .nav-sub {
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 2px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+
+  .nav-right {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .nav-datetime {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-align: right;
+    line-height: 1.6;
+  }
+
+  .nav-datetime span {
+    display: block;
+    color: var(--accent);
+    font-size: 13px;
+  }
+
+  /* ===== PENDING BADGE ===== */
+  .pending-badge {
+    font-family: var(--sans);
+    font-size: 10px;
+    font-weight: 800;
+    color: var(--warn);
+    background: rgba(251,191,36,0.1);
+    border: 1px solid rgba(251,191,36,0.3);
+    padding: 3px 6px;
+    border-radius: 4px;
+    margin-left: 8px;
+    display: none;
+    letter-spacing: 1px;
+  }
+
+  /* ===== MAIN ===== */
+  .wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 24px 16px;
+  }
+
+  /* ===== SECTION TITLE ===== */
+  .section-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: linear-gradient(90deg, var(--border), transparent);
+  }
+
+  /* ===== CARD ===== */
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+    opacity: 0.4;
+  }
+
+  /* ===== QR BUTTON ===== */
+  #qr-btn {
+    width: 100%;
+    background: linear-gradient(135deg, rgba(0,229,255,0.12), rgba(0,229,255,0.05));
+    color: var(--accent);
+    border: 1px solid rgba(0,229,255,0.3);
+    padding: 14px;
+    border-radius: 8px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 0;
+  }
+
+  #qr-btn:hover {
+    background: linear-gradient(135deg, rgba(0,229,255,0.2), rgba(0,229,255,0.08));
+    border-color: var(--accent);
+    box-shadow: 0 0 20px rgba(0,229,255,0.1);
+  }
+
+  #qr-btn.scanning {
+    background: linear-gradient(135deg, rgba(0,255,156,0.12), rgba(0,255,156,0.05));
+    color: var(--accent2);
+    border-color: rgba(0,255,156,0.3);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(0,255,156,0.2); }
+    50% { box-shadow: 0 0 20px 4px rgba(0,255,156,0.15); }
+  }
+
+  #reader {
+    width: 100%;
+    margin-top: 14px;
+    border-radius: 8px;
+    overflow: hidden;
+  }
+
+  #reader video { border-radius: 8px; }
+
+  /* ===== FORM FIELDS ===== */
+  .field-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-bottom: 14px;
+  }
+
+  .field-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  .field-input {
+    background: #0a1525;
+    color: #e0e8f0;
+    border: 1px solid rgba(255,255,255,0.08);
+    padding: 11px 14px;
+    border-radius: 7px;
+    font-size: 14px;
+    font-family: var(--mono);
+    outline: none;
+    width: 100%;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+
+  .field-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0,229,255,0.06);
+  }
+
+  .field-input[readonly] {
+    color: var(--accent);
+    font-weight: 600;
+    cursor: default;
+  }
+
+  .field-input[readonly]:focus {
+    border-color: rgba(255,255,255,0.08);
+    box-shadow: none;
+  }
+
+  .field-input::placeholder {
+    color: var(--muted);
+    font-size: 12px;
+  }
+
+  select.field-input {
+    appearance: none;
+    -webkit-appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7a8d' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    padding-right: 36px;
+    cursor: pointer;
+    color-scheme: dark;
+  }
+
+  select.field-input option {
+    background: #0f1520;
+    color: #e0e8f0;
+  }
+
+  /* ===== DATETIME ROW ===== */
+  .dt-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  /* ===== PRODUCT DISPLAY ===== */
+  .product-display {
+    background: rgba(0,229,255,0.04);
+    border: 1px solid rgba(0,229,255,0.15);
+    border-radius: 7px;
+    padding: 11px 14px;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    letter-spacing: 1px;
+  }
+
+  .product-display.empty {
+    color: var(--muted);
+    font-weight: 400;
+    font-size: 12px;
+    letter-spacing: 0;
+  }
+
+  /* ===== REASON BOX ===== */
+  .reason-box {
+    background: rgba(0,255,156,0.06);
+    border: 1px solid rgba(0,255,156,0.25);
+    border-radius: 7px;
+    padding: 11px 14px;
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--accent2);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    letter-spacing: 1px;
+  }
+
+  .reason-box.empty {
+    color: var(--muted);
+    border-color: rgba(255,255,255,0.08);
+    font-weight: 400;
+    font-size: 12px;
+    letter-spacing: 0;
+    background: #0a1525;
+  }
+
+  /* ===== SUBMIT BUTTON ===== */
+  #submit-btn {
+    width: 100%;
+    background: linear-gradient(135deg, var(--accent), #0091ff);
+    color: #000;
+    border: none;
+    padding: 14px;
+    border-radius: 8px;
+    font-family: var(--sans);
+    font-size: 14px;
+    font-weight: 800;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.1s, box-shadow 0.2s;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  #submit-btn:hover {
+    opacity: 0.88;
+    box-shadow: 0 4px 20px rgba(0,229,255,0.25);
+  }
+
+  #submit-btn:active { transform: scale(0.98); }
+
+  /* ===== REFRESH BUTTON ===== */
+  #refresh-btn {
+    width: 100%;
+    background: rgba(0,255,156,0.07);
+    color: var(--accent2);
+    border: 1px solid rgba(0,255,156,0.2);
+    padding: 12px;
+    border-radius: 8px;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    text-transform: uppercase;
+  }
+
+  #refresh-btn:hover {
+    background: rgba(0,255,156,0.12);
+    border-color: var(--accent2);
+  }
+
+  /* ===== STATUS TOAST ===== */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--card2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 24px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    z-index: 999;
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s;
+    opacity: 0;
+    white-space: nowrap;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  #toast.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+  }
+
+  #toast.success { border-color: rgba(0,255,156,0.3); color: var(--accent2); }
+  #toast.error { border-color: rgba(255,69,96,0.3); color: var(--danger); }
+
+  /* ===== STATUS INDICATOR ===== */
+  .status-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent2);
+    display: inline-block;
+    box-shadow: 0 0 8px var(--accent2);
+    transition: background 0.3s, box-shadow 0.3s;
+    animation: blink 2s ease-in-out infinite;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+</style>
+</head>
+<body>
+
+<div id="topnav">
+  <div class="nav-brand">FRP</div>
+  <div class="nav-sub">Move Product</div>
+  <div class="nav-right">
+    <div class="nav-datetime">
+      <span id="nav-time">--:--:--</span>
+      <span id="nav-date" style="color:var(--muted);font-size:10px;">--/--/----</span>
+    </div>
+    <div id="pending-status" class="pending-badge">0 PENDING</div>
+    <span class="status-dot" id="network-dot" style="margin-left:8px;"></span>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <div class="card">
+    <div class="section-title">QR Scanner</div>
+    <button id="qr-btn" onclick="toggleScan()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+        <rect x="3" y="14" width="7" height="7"/><path d="M14 14h3v3h3v-3M17 14v-3M20 17h-3"/>
+      </svg>
+      <span id="qr-btn-text">QUÉT MÃ QR</span>
+    </button>
+    <div id="reader"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Product</div>
+
+    <div class="field-group">
+      <div class="field-label">Mã sản phẩm</div>
+      <div class="product-display empty" id="product-display">Chưa quét mã QR...</div>
+      <input type="hidden" id="product">
+    </div>
+
+    <div class="dt-row">
+      <div class="field-group" style="margin-bottom:0">
+        <div class="field-label">Date</div>
+        <input class="field-input" id="date" readonly>
+      </div>
+      <div class="field-group" style="margin-bottom:0">
+        <div class="field-label">Time</div>
+        <input class="field-input" id="time" readonly>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Reason</div>
+    <div class="field-group" style="margin-bottom:0">
+      <div class="field-label">Lý do (từ hệ thống)</div>
+      <div id="reason-box" class="reason-box empty">Chưa có dữ liệu</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Input Data</div>
+
+    <div class="field-group">
+      <div class="field-label">NET (kg)</div>
+      <input class="field-input" id="net" type="number" placeholder="Nhập khối lượng..." step="0.01">
+    </div>
+
+    <div class="field-group">
+      <div class="field-label">Move to</div>
+      <select class="field-input" id="moveTo">
+        <option>Chuyển silo 8F</option>
+        <option>Chuyển silo 9F</option>
+        <option>Move to POY</option>
+      </select>
+    </div>
+
+    <div class="field-group" style="margin-bottom:0">
+      <div class="field-label">Mã nhân viên</div>
+      <input class="field-input" id="emp" placeholder="Nhập mã nhân viên...">
+    </div>
+  </div>
+
+  <button id="submit-btn" onclick="submitData()">▶ Submit</button>
+  <button id="refresh-btn" onclick="refreshCache()">↺ Refresh Cache</button>
+
+</div>
+
+<div id="toast"></div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbyn86R5M5-RaT6BVVAbRSf36khALM4YT5muwL-lW_d6wtHsnr9fHDV1JVq0yWKhxK0VHA/exec";
+
+let scanner;
+let isScanning = false;
+let queue = [];
+let isSending = false;
+
+// ===== DATE TIME =====
+function updateDateTime() {
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString('vi-VN');
+  const dateStr = now.toLocaleDateString('vi-VN');
+  document.getElementById("date").value = dateStr;
+  document.getElementById("time").value = timeStr;
+  document.getElementById("nav-time").textContent = timeStr;
+  document.getElementById("nav-date").textContent = dateStr;
+}
+setInterval(updateDateTime, 1000);
+updateDateTime();
+
+// ===== SCAN =====
+function toggleScan() {
+  if (isScanning) {
+    stopScan();
+  } else {
+    startScan();
+  }
+}
+
+function startScan() {
+  const btn = document.getElementById('qr-btn');
+  const btnText = document.getElementById('qr-btn-text');
+  isScanning = true;
+  btn.classList.add('scanning');
+  btnText.textContent = 'ĐANG QUÉT... (Nhấn để dừng)';
+
+  scanner = new Html5Qrcode("reader");
+  scanner.start(
+    { facingMode: "environment" },
+    { fps: 10, qrbox: 250 },
+    (decodedText) => {
+      document.getElementById("product").value = decodedText;
+      const display = document.getElementById("product-display");
+      display.textContent = decodedText;
+      display.classList.remove('empty');
+      stopScan();
+      loadReason(decodedText);
+      document.getElementById("net").focus();
+      showToast('✓ Đã quét: ' + decodedText, 'success');
+    }
+  ).catch(() => {
+    stopScan();
+  });
+}
+
+function stopScan() {
+  const btn = document.getElementById('qr-btn');
+  const btnText = document.getElementById('qr-btn-text');
+  isScanning = false;
+  btn.classList.remove('scanning');
+  btnText.textContent = 'QUÉT MÃ QR';
+  if (scanner) {
+    scanner.stop().catch(() => {});
+  }
+}
+
+// ===== LOAD REASON =====
+function loadReason(product) {
+  const box = document.getElementById("reason-box");
+  box.textContent = "Đang tải...";
+  box.classList.add("empty");
+
+  fetch(API_URL + "?action=getReason&product=" + encodeURIComponent(product))
+    .then(r => r.json())
+    .then(data => {
+      if (data.reason) {
+        box.textContent = data.reason;
+        box.classList.remove("empty");
+      } else {
+        box.textContent = "Không tìm thấy";
+        box.classList.add("empty");
+      }
+    })
+    .catch(() => {
+      box.textContent = "Lỗi kết nối";
+      box.classList.add("empty");
+    });
+}
+
+// ===== TOAST =====
+function showToast(message, type = 'success') {
+  const toast = document.getElementById('toast');
+  toast.textContent = message;
+  toast.className = 'show ' + type;
+  setTimeout(() => {
+    toast.className = '';
+  }, 3000);
+}
+
+// ===== LOCAL STORAGE QUEUE =====
+function saveQueue() {
+  localStorage.setItem("frp_move_queue", JSON.stringify(queue));
+}
+
+function loadQueue() {
+  const q = localStorage.getItem("frp_move_queue");
+  if (q) queue = JSON.parse(q);
+}
+
+function updateStatus() {
+  const pendingBadge = document.getElementById("pending-status");
+  if (queue.length > 0) {
+    pendingBadge.textContent = queue.length + " PENDING";
+    pendingBadge.style.display = "inline-block";
+  } else {
+    pendingBadge.style.display = "none";
+  }
+}
+
+// ===== SUBMIT =====
+function submitData() {
+  const product = document.getElementById("product").value;
+  const reason = document.getElementById("reason-box").textContent;
+  const moveTo = document.getElementById("moveTo").value;
+  const emp = document.getElementById("emp").value;
+  const net = document.getElementById("net").value;
+  const date = document.getElementById("date").value;
+  const time = document.getElementById("time").value;
+
+  if (!product) { showToast('⚠ Vui lòng quét mã sản phẩm!', 'error'); return; }
+  if (!net) { showToast('⚠ Vui lòng nhập NET (kg)!', 'error'); return; }
+  if (!emp) { showToast('⚠ Vui lòng nhập mã nhân viên!', 'error'); return; }
+
+  const data = { product, reason, moveTo, emp, net, date, time };
+
+  queue.push(data);
+  saveQueue();
+  updateStatus();
+
+  showToast('✓ Đã lưu vào hàng đợi!', 'success');
+
+  // Reset form
+  document.getElementById("product").value = "";
+  document.getElementById("net").value = "";
+  document.getElementById("emp").value = "";
+  const display = document.getElementById("product-display");
+  display.textContent = 'Chưa quét mã QR...';
+  display.classList.add('empty');
+  const box = document.getElementById("reason-box");
+  box.textContent = "Chưa có dữ liệu";
+  box.classList.add("empty");
+
+  processQueue();
+}
+
+// ===== QUEUE SEND =====
+async function processQueue() {
+  if (isSending) return;
+  isSending = true;
+
+  const dot = document.getElementById("network-dot");
+  dot.style.background = "var(--warn)";
+  dot.style.boxShadow = "0 0 8px var(--warn)";
+
+  while (queue.length > 0) {
+    const item = queue[0];
+    try {
+      await fetch(API_URL, {
+        method: "POST",
+        body: JSON.stringify(item)
+      });
+      queue.shift();
+      saveQueue();
+      updateStatus();
+    } catch (e) {
+      break;
+    }
+  }
+
+  isSending = false;
+  dot.style.background = "var(--accent2)";
+  dot.style.boxShadow = "0 0 8px var(--accent2)";
+}
+
+// ===== REFRESH CACHE =====
+function refreshCache() {
+  fetch(API_URL + "?action=refresh")
+    .then(() => showToast('✓ Đã refresh cache', 'success'))
+    .catch(() => showToast('⚠ Lỗi kết nối', 'error'));
+}
+
+// ===== INIT =====
+window.onload = () => {
+  loadQueue();
+  updateStatus();
+  processQueue();
+
+  window.addEventListener('online', processQueue);
+
+  setInterval(() => {
+    if (queue.length > 0 && navigator.onLine) {
+      processQueue();
+    }
+  }, 10000);
+};
+</script>
+
+</body>
+</html>
