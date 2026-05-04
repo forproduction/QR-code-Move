@@ -298,8 +298,8 @@
     letter-spacing: 0;
   }
 
-  /* ===== REASON BOX ===== */
-  .reason-box {
+  /* ===== IMPORT INFO BOX (Reason + NET từ Import) ===== */
+  .import-info-box {
     background: rgba(0,255,156,0.06);
     border: 1px solid rgba(0,255,156,0.25);
     border-radius: 7px;
@@ -314,7 +314,39 @@
     letter-spacing: 1px;
   }
 
-  .reason-box.empty {
+  .import-info-box.empty {
+    color: var(--muted);
+    border-color: rgba(255,255,255,0.08);
+    font-weight: 400;
+    font-size: 12px;
+    letter-spacing: 0;
+    background: #0a1525;
+  }
+
+  .import-info-box.loading {
+    color: var(--warn);
+    border-color: rgba(251,191,36,0.25);
+    background: rgba(251,191,36,0.04);
+    animation: blink 1s ease-in-out infinite;
+  }
+
+  /* ===== NET FROM IMPORT (readonly display) ===== */
+  .net-import-box {
+    background: rgba(0,229,255,0.04);
+    border: 1px solid rgba(0,229,255,0.2);
+    border-radius: 7px;
+    padding: 11px 14px;
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--accent);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    letter-spacing: 1px;
+  }
+
+  .net-import-box.empty {
     color: var(--muted);
     border-color: rgba(255,255,255,0.08);
     font-weight: 400;
@@ -467,21 +499,23 @@
     </div>
   </div>
 
+  <!-- ===== THÔNG TIN TỪ IMPORT (tự động điền sau khi quét QR) ===== -->
   <div class="card">
-    <div class="section-title">Reason</div>
+    <div class="section-title">Dữ liệu từ Import</div>
+
+    <div class="field-group">
+      <div class="field-label">Reason (từ Import)</div>
+      <div id="reason-box" class="import-info-box empty">Chưa có dữ liệu</div>
+    </div>
+
     <div class="field-group" style="margin-bottom:0">
-      <div class="field-label">Lý do (từ hệ thống)</div>
-      <div id="reason-box" class="reason-box empty">Chưa có dữ liệu</div>
+      <div class="field-label">NET kg (từ Import)</div>
+      <div id="net-import-box" class="net-import-box empty">Chưa có dữ liệu</div>
     </div>
   </div>
 
   <div class="card">
     <div class="section-title">Input Data</div>
-
-    <div class="field-group">
-      <div class="field-label">NET (kg)</div>
-      <input class="field-input" id="net" type="number" placeholder="Nhập khối lượng..." step="0.01">
-    </div>
 
     <div class="field-group">
       <div class="field-label">Move to</div>
@@ -552,8 +586,9 @@ function startScan() {
       display.textContent = decodedText;
       display.classList.remove('empty');
       stopScan();
-      loadReason(decodedText);
-      document.getElementById("net").focus();
+      // 🔑 Gọi API lấy cả reason và net từ sheet Import
+      loadImportData(decodedText);
+      document.getElementById("emp").focus();
       showToast('✓ Đã quét: ' + decodedText, 'success');
     }
   ).catch(() => {
@@ -572,26 +607,43 @@ function stopScan() {
   }
 }
 
-// ===== LOAD REASON =====
-function loadReason(product) {
-  const box = document.getElementById("reason-box");
-  box.textContent = "Đang tải...";
-  box.classList.add("empty");
+// ===== LOAD IMPORT DATA (reason + net) =====
+function loadImportData(product) {
+  const reasonBox = document.getElementById("reason-box");
+  const netBox = document.getElementById("net-import-box");
+
+  // Trạng thái loading
+  reasonBox.textContent = "Đang tải...";
+  reasonBox.className = "import-info-box loading";
+  netBox.textContent = "Đang tải...";
+  netBox.className = "net-import-box loading";
 
   fetch(API_URL + "?action=getReason&product=" + encodeURIComponent(product))
     .then(r => r.json())
     .then(data => {
+      // ---- Hiển thị REASON ----
       if (data.reason) {
-        box.textContent = data.reason;
-        box.classList.remove("empty");
+        reasonBox.textContent = data.reason;
+        reasonBox.className = "import-info-box";
       } else {
-        box.textContent = "Không tìm thấy";
-        box.classList.add("empty");
+        reasonBox.textContent = "Không tìm thấy";
+        reasonBox.className = "import-info-box empty";
+      }
+
+      // ---- Hiển thị NET từ Import ----
+      if (data.net !== undefined && data.net !== "") {
+        netBox.textContent = data.net + " kg";
+        netBox.className = "net-import-box";
+      } else {
+        netBox.textContent = "Không có dữ liệu";
+        netBox.className = "net-import-box empty";
       }
     })
     .catch(() => {
-      box.textContent = "Lỗi kết nối";
-      box.classList.add("empty");
+      reasonBox.textContent = "Lỗi kết nối";
+      reasonBox.className = "import-info-box empty";
+      netBox.textContent = "Lỗi kết nối";
+      netBox.className = "net-import-box empty";
     });
 }
 
@@ -628,18 +680,25 @@ function updateStatus() {
 // ===== SUBMIT =====
 function submitData() {
   const product = document.getElementById("product").value;
-  const reason = document.getElementById("reason-box").textContent;
+  // Lấy reason và net từ box hiển thị (đã được load từ Import)
+  const reasonBox = document.getElementById("reason-box");
+  const netBox = document.getElementById("net-import-box");
+  const reason = (reasonBox.classList.contains("empty") || reasonBox.classList.contains("loading"))
+    ? "" : reasonBox.textContent;
+  const netImport = (netBox.classList.contains("empty") || netBox.classList.contains("loading"))
+    ? "" : netBox.textContent.replace(" kg", "");
+
   const moveTo = document.getElementById("moveTo").value;
   const emp = document.getElementById("emp").value;
-  const net = document.getElementById("net").value;
   const date = document.getElementById("date").value;
   const time = document.getElementById("time").value;
 
   if (!product) { showToast('⚠ Vui lòng quét mã sản phẩm!', 'error'); return; }
-  if (!net) { showToast('⚠ Vui lòng nhập NET (kg)!', 'error'); return; }
   if (!emp) { showToast('⚠ Vui lòng nhập mã nhân viên!', 'error'); return; }
+  if (!reason) { showToast('⚠ Chưa tải được dữ liệu từ Import!', 'error'); return; }
 
-  const data = { product, reason, moveTo, emp, net, date, time };
+  // Gửi kèm net từ Import vào sheet Export để tra cứu sau
+  const data = { product, reason, net: netImport, moveTo, emp, date, time };
 
   queue.push(data);
   saveQueue();
@@ -649,14 +708,14 @@ function submitData() {
 
   // Reset form
   document.getElementById("product").value = "";
-  document.getElementById("net").value = "";
   document.getElementById("emp").value = "";
   const display = document.getElementById("product-display");
   display.textContent = 'Chưa quét mã QR...';
   display.classList.add('empty');
-  const box = document.getElementById("reason-box");
-  box.textContent = "Chưa có dữ liệu";
-  box.classList.add("empty");
+  reasonBox.textContent = "Chưa có dữ liệu";
+  reasonBox.className = "import-info-box empty";
+  netBox.textContent = "Chưa có dữ liệu";
+  netBox.className = "net-import-box empty";
 
   processQueue();
 }
